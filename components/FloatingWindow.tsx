@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Minus, Maximize2, Move } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { cn } from '../lib/utils'
 
 interface FloatingWindowProps {
   children: React.ReactNode
@@ -21,8 +21,8 @@ export function FloatingWindow({
   const [isMinimized, setIsMinimized] = useState(false)
 
   const handleMinimize = () => {
-    if (window.require) {
-      const { ipcRenderer } = window.require('electron')
+    if (typeof window !== 'undefined' && (window as any).require) {
+      const { ipcRenderer } = (window as any).require('electron')
       ipcRenderer.send('minimize-window')
     } else {
       setIsMinimized(!isMinimized)
@@ -30,8 +30,8 @@ export function FloatingWindow({
   }
 
   const handleClose = () => {
-    if (window.require) {
-      const { ipcRenderer } = window.require('electron')
+    if (typeof window !== 'undefined' && (window as any).require) {
+      const { ipcRenderer } = (window as any).require('electron')
       ipcRenderer.send('close-window')
     }
   }
@@ -41,15 +41,15 @@ export function FloatingWindow({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       className={cn(
-        'flex flex-col overflow-hidden h-screen w-screen border-cyber-border-bright border glass transition-all duration-300',
+        'flex flex-col overflow-hidden h-full w-full border-cyber-border-bright border glass transition-all duration-300',
         className
       )}
     >
       {/* Header / Drag Region */}
-      <div className="flex items-center justify-between px-3 h-10 bg-cyber-dark/80 border-b border-cyber-border drag-region select-none">
+      <div className="flex items-center justify-between px-3 h-10 bg-cyber-dark/80 border-b border-cyber-border drag-region select-none shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-cyber-blue animate-pulse shadow-neon" />
-          <span className="text-xs font-bold tracking-widest text-cyber-blue uppercase neon-text">
+          <span className="text-[10px] font-bold tracking-[0.2em] text-cyber-blue uppercase neon-text">
             {title}
           </span>
         </div>

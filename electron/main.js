@@ -1,18 +1,21 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, desktopCapturer, screen } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
 const { speak, startSapiRecognition } = require('./sapi');
 
 let mainWindow;
 
-// Stealth: Process Name Disguise
-// We set the name before the app is ready
 app.name = 'RuntimeBroker';
 
 function createWindow() {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
   mainWindow = new BrowserWindow({
     width: 450,
     height: 700,
+    x: width - 480,
+    y: height - 730,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -22,12 +25,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     title: 'Nova AI',
-    icon: path.join(__dirname, '../public/favicon.ico'),
-    // Hide from taskbar for extra stealth if needed, but let's keep it for now
-    // skipTaskbar: true,
   });
 
-  // Stealth: Hide from screen capture (Critical Requirement)
   mainWindow.setContentProtection(true);
 
   const url = isDev
@@ -36,7 +35,6 @@ function createWindow() {
 
   mainWindow.loadURL(url);
 
-  // Ensure window is always on top even when it loses focus
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
 
@@ -46,8 +44,6 @@ function createWindow() {
 app.on('ready', () => {
   createWindow();
 
-  // Global Keyboard Shortcuts
-  // Alt+V: Toggle voice recognition mode
   globalShortcut.register('Alt+V', () => {
     if (mainWindow) {
       mainWindow.show();
@@ -55,7 +51,6 @@ app.on('ready', () => {
     }
   });
 
-  // Alt+S: Capture screenshot for OCR
   globalShortcut.register('Alt+S', () => {
     if (mainWindow) {
       mainWindow.show();
@@ -63,14 +58,12 @@ app.on('ready', () => {
     }
   });
 
-  // Alt+C: Clear chat history
   globalShortcut.register('Alt+C', () => {
     if (mainWindow) {
       mainWindow.webContents.send('clear-chat');
     }
   });
 
-  // Alt+X: Toggle window visibility (Stealth)
   globalShortcut.register('Alt+X', () => {
     if (mainWindow) {
       if (mainWindow.isVisible()) {
@@ -83,7 +76,6 @@ app.on('ready', () => {
 });
 
 app.on('will-quit', () => {
-  // Unregister all shortcuts
   globalShortcut.unregisterAll();
 });
 
@@ -93,25 +85,7 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('activate', () => {
-  if (mainWindow === null) {
-    createWindow();
-  }
-});
-
 // IPC Handlers
-ipcMain.on('speak-sapi', (event, text) => {
-  speak(text);
-});
-
-ipcMain.on('start-sapi-stt', () => {
-  startSapiRecognition((text) => {
-    if (mainWindow) {
-      mainWindow.webContents.send('voice-transcript', text);
-    }
-  });
-});
-
 ipcMain.handle('get-desktop-sources', async () => {
   const sources = await desktopCapturer.getSources({
     types: ['screen'],
@@ -132,8 +106,12 @@ ipcMain.on('close-window', () => {
   if (mainWindow) mainWindow.close();
 });
 
-ipcMain.on('set-ignore-mouse', (event, ignore) => {
+ipcMain.on('resize-window', (event, { width, height, x, y }) => {
   if (mainWindow) {
-    mainWindow.setIgnoreMouseEvents(ignore, { forward: true });
+    if (x !== undefined && y !== undefined) {
+      mainWindow.setBounds({ width, height, x, y }, true);
+    } else {
+      mainWindow.setSize(width, height, true);
+    }
   }
 });
