@@ -5,8 +5,9 @@ import { ChatInterface } from '../components/ChatInterface'
 import { ScreenCapture } from '../components/ScreenCapture'
 import { ModelSelector } from '../components/ModelSelector'
 import { SettingsPanel } from '../components/SettingsPanel'
+import { ControlBar } from '../components/ControlBar'
 import { useState, useEffect, useRef } from 'react'
-import { Settings as SettingsIcon, Shield, Mic, Cpu, Monitor, Zap, Minimize2, Command, ArrowRight } from 'lucide-react'
+import { Settings as SettingsIcon, Mic, Cpu, Monitor, Zap, Minimize2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAIChat } from '../hooks/useAIChat'
@@ -17,34 +18,21 @@ import { useSettings } from '../hooks/useSettings'
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'chat' | 'screen' | 'voice' | 'settings' | 'models'>('chat')
   const [isExpanded, setIsExpanded] = useState(false)
-  const [commandValue, setCommandValue] = useState('')
 
   const { messages, isLoading: isChatLoading, sendMessage, clearChat } = useAIChat()
   const { isListening, transcript, interimTranscript, startListening, stopListening, resetTranscript } = useVoiceRecognition()
   const { screenshots, isCapturing, captureScreen, deleteScreenshot, updateScreenshotOCR } = useScreenCapture()
   const { settings, updateSettings } = useSettings()
 
-  const inputRef = useRef<HTMLInputElement>(null)
-
   // Electron IPC Listeners
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).require) {
       const { ipcRenderer } = (window as any).require('electron')
 
-      const handleToggleVoice = () => {
-        setIsExpanded(true)
-        setActiveTab('voice')
-      }
-      const handleCaptureScreen = () => {
-        setIsExpanded(true)
-        setActiveTab('screen')
-        captureScreen()
-      }
+      const handleToggleVoice = () => { setIsExpanded(true); setActiveTab('voice') }
+      const handleCaptureScreen = () => { setIsExpanded(true); setActiveTab('screen'); captureScreen() }
       const handleClearChat = () => clearChat()
-      const handleFocusCommand = () => {
-        setIsExpanded(true)
-        inputRef.current?.focus()
-      }
+      const handleFocusCommand = () => setIsExpanded(true)
 
       ipcRenderer.on('toggle-voice', handleToggleVoice)
       ipcRenderer.on('capture-screen', handleCaptureScreen)
@@ -65,27 +53,15 @@ export default function Home() {
     if (typeof window !== 'undefined' && (window as any).require) {
       const { ipcRenderer } = (window as any).require('electron')
       if (isExpanded) {
-        ipcRenderer.send('resize-window', { width: 450, height: 600 })
+        ipcRenderer.send('resize-window', { width: 480, height: 650 })
       } else {
         ipcRenderer.send('resize-window', { width: 80, height: 80 })
       }
     }
   }, [isExpanded])
 
-  const handleCommandSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!commandValue.trim() || isChatLoading) return
-
-    sendMessage(commandValue, {
-      provider: settings.aiProvider,
-      model: settings.aiModel,
-    })
-    setCommandValue('')
-    setActiveTab('chat')
-  }
-
   return (
-    <main className="h-screen w-screen overflow-hidden bg-transparent font-sans selection:bg-cyber-blue/30 selection:text-cyber-cyan">
+    <main className="h-screen w-screen overflow-hidden bg-transparent font-sans selection:bg-blue-600/30">
       {/* Launcher (FAB) */}
       <AnimatePresence>
         {!isExpanded && (
@@ -97,10 +73,10 @@ export default function Home() {
           >
             <button
               onClick={() => setIsExpanded(true)}
-              className="w-14 h-14 rounded-2xl glass border-cyber-border-bright flex items-center justify-center shadow-neon hover:border-cyber-blue transition-all group overflow-hidden"
+              className="w-14 h-14 rounded-2xl bg-[#252529]/90 backdrop-blur-xl border border-white/10 flex items-center justify-center shadow-2xl hover:border-white/20 transition-all group overflow-hidden"
             >
-              <div className="absolute inset-0 bg-cyber-blue/5 animate-pulse-slow" />
-              <Zap className="relative z-10 w-6 h-6 text-cyber-blue group-hover:scale-110 transition-transform" />
+              <div className="absolute inset-0 bg-blue-500/5 animate-pulse-slow" />
+              <Zap className="relative z-10 w-6 h-6 text-white group-hover:scale-110 transition-transform" fill="currentColor" />
             </button>
           </motion.div>
         )}
@@ -110,79 +86,28 @@ export default function Home() {
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.98 }}
-            className="h-full w-full flex flex-col p-4"
+            exit={{ opacity: 0, y: 30, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+            className="h-full w-full flex flex-col p-3"
           >
-            <div className="flex-1 glass border-cyber-border-bright rounded-3xl flex flex-col overflow-hidden shadow-neon-bright relative">
+            {/* Top Control Bar */}
+            <ControlBar onClose={() => setIsExpanded(false)} />
 
-              <div className="p-4 bg-cyber-black/40 border-b border-cyber-border drag-region">
-                <form onSubmit={handleCommandSubmit} className="relative flex items-center no-drag">
-                  <div className="absolute left-3 text-cyber-blue/40">
-                    <Command size={16} />
-                  </div>
-                  <input
-                    ref={inputRef}
-                    value={commandValue}
-                    onChange={(e) => setCommandValue(e.target.value)}
-                    placeholder="Search or ask Nova..."
-                    className="w-full bg-cyber-black/40 border border-cyber-border focus:border-cyber-blue/60 rounded-xl py-3 pl-10 pr-12 text-sm text-cyber-blue placeholder:text-cyber-blue/20 outline-none transition-all"
-                  />
-                  <div className="absolute right-3 flex items-center gap-2">
-                    {commandValue.length > 0 && (
-                      <button type="submit" className="text-cyber-blue hover:text-cyber-cyan transition-colors">
-                        <ArrowRight size={18} />
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-
-              <div className="flex items-center gap-1 px-4 py-2 bg-cyber-black/20 border-b border-cyber-border no-drag shrink-0">
-                {[
-                  { id: 'chat', icon: Cpu, label: 'Console' },
-                  { id: 'screen', icon: Monitor, label: 'Signal' },
-                  { id: 'voice', icon: Mic, label: 'Neural' },
-                  { id: 'models', icon: Zap, label: 'Pulse' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 transition-all",
-                      activeTab === tab.id
-                        ? "bg-cyber-blue/10 text-cyber-blue border border-cyber-blue/20 shadow-neon"
-                        : "text-cyber-blue/30 hover:text-cyber-blue/60 hover:bg-cyber-blue/5"
-                    )}
-                  >
-                    <tab.icon size={12} />
-                    {tab.label}
-                  </button>
-                ))}
-                <div className="flex-1" />
-                <button
-                  onClick={() => setActiveTab('settings')}
-                  className={cn(
-                    "p-2 rounded-lg transition-all",
-                    activeTab === 'settings' ? "text-cyber-blue bg-cyber-blue/10 border border-cyber-blue/20" : "text-cyber-blue/30 hover:text-cyber-blue/60"
-                  )}
-                >
-                  <SettingsIcon size={14} />
-                </button>
-                <button
-                  onClick={() => setIsExpanded(false)}
-                  className="p-2 text-cyber-blue/30 hover:text-cyber-blue transition-all"
-                >
-                  <Minimize2 size={14} />
-                </button>
-              </div>
+            {/* Chat/Content Window */}
+            <div className="flex-1 bg-[#1e1e22]/95 backdrop-blur-3xl border border-white/[0.08] rounded-[2.5rem] flex flex-col overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] relative">
 
               <div className="flex-1 overflow-hidden relative">
                 <AnimatePresence mode="wait">
                   {activeTab === 'chat' && (
-                    <motion.div key="chat" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full">
-                      <ChatInterface messages={messages} isLoading={isChatLoading} onSendMessage={(content) => sendMessage(content)} />
+                    <motion.div key="chat" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full font-medium">
+                      <ChatInterface
+                        messages={messages}
+                        isLoading={isChatLoading}
+                        onSendMessage={(content) => sendMessage(content)}
+                        onCaptureScreen={captureScreen}
+                      />
                     </motion.div>
                   )}
                   {activeTab === 'screen' && (
@@ -191,15 +116,15 @@ export default function Home() {
                     </motion.div>
                   )}
                   {activeTab === 'voice' && (
-                    <motion.div key="voice" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="h-full flex items-center justify-center p-6 text-center">
+                    <motion.div key="voice" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full flex items-center justify-center p-6 text-center">
                       <div className="space-y-6 w-full max-w-sm">
-                        <div onClick={isListening ? () => stopListening(null) : () => startListening()} className={cn("w-20 h-20 rounded-3xl border-2 flex items-center justify-center relative mx-auto cursor-pointer transition-all duration-500", isListening ? "bg-cyber-blue/20 border-cyber-blue shadow-neon" : "bg-cyber-black/40 border-cyber-border hover:border-cyber-blue/40")}>
-                          <Mic className={cn("text-cyber-blue", isListening && "scale-110")} size={28} />
-                          {isListening && <div className="absolute inset-0 border-2 border-cyber-blue rounded-3xl animate-ping opacity-20" />}
+                        <div onClick={isListening ? () => stopListening(null) : () => startListening()} className={cn("w-20 h-20 rounded-3xl border-2 flex items-center justify-center relative mx-auto cursor-pointer transition-all duration-500", isListening ? "bg-blue-600/20 border-blue-500 shadow-lg" : "bg-white/[0.03] border-white/10 hover:border-white/20")}>
+                          <Mic className={cn("text-white", isListening && "scale-110")} size={28} />
+                          {isListening && <div className="absolute inset-0 border-2 border-blue-500 rounded-3xl animate-ping opacity-20" />}
                         </div>
-                        <p className="text-[10px] font-bold text-cyber-blue tracking-widest uppercase">Neural Uplink {isListening ? 'Active' : 'Ready'}</p>
-                        <div className="glass border-cyber-border p-4 rounded-2xl min-h-[80px] text-left">
-                          <p className="text-xs text-cyber-blue/80 font-mono italic">{transcript || interimTranscript || 'Waiting for signal...'}</p>
+                        <p className="text-[11px] font-bold text-white/90 uppercase tracking-widest">{isListening ? 'Neural Uplink Active' : 'Transceiver Ready'}</p>
+                        <div className="bg-white/[0.03] border border-white/[0.08] p-5 rounded-[2rem] min-h-[100px] text-left shadow-inner">
+                          <p className="text-[13px] text-white/80 leading-relaxed italic">{transcript || interimTranscript || 'Waiting for signal...'}</p>
                         </div>
                       </div>
                     </motion.div>
@@ -210,25 +135,49 @@ export default function Home() {
                     </motion.div>
                   )}
                   {activeTab === 'settings' && (
-                    <motion.div key="settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full">
+                    <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
                       <SettingsPanel settings={settings} updateSettings={updateSettings} />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <div className="h-8 bg-cyber-dark/60 border-t border-cyber-border flex items-center justify-between px-4 shrink-0 no-drag">
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-1.5 h-1.5 rounded-full shadow-neon", isChatLoading ? "bg-cyber-blue animate-pulse" : "bg-green-500")} />
-                  <span className="text-[8px] font-bold tracking-[0.2em] text-cyber-blue/40 uppercase">Stable Uplink</span>
-                </div>
-                <span className="text-[8px] font-bold tracking-[0.2em] text-cyber-blue/40 uppercase">Nova Core v1.0</span>
+              {/* Navigation Pills */}
+              <div className="flex items-center justify-center gap-1.5 px-4 py-5 bg-transparent shrink-0 border-t border-white/[0.05]">
+                {[
+                  { id: 'chat', label: 'Chat' },
+                  { id: 'screen', label: 'Screen' },
+                  { id: 'voice', label: 'Voice' },
+                  { id: 'models', label: 'Models' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-[11px] font-bold tracking-tight uppercase transition-all",
+                      activeTab === tab.id
+                        ? "bg-white/10 text-white border border-white/10 shadow-lg"
+                        : "text-white/30 hover:text-white/60 hover:bg-white/5"
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+                <div className="w-[1px] h-4 bg-white/10 mx-2" />
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={cn(
+                    "p-2 rounded-full transition-all",
+                    activeTab === 'settings' ? "text-white bg-white/10" : "text-white/30 hover:text-white/60"
+                  )}
+                >
+                  <SettingsIcon size={15} />
+                </button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] z-[-1] bg-[linear-gradient(rgba(0,242,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,242,255,0.1)_1px,transparent_1px)] bg-[size:20px_20px]" />
     </main>
   )
 }
