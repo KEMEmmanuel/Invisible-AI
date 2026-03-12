@@ -1,17 +1,14 @@
 
-> nova-ai@1.0.0 dev
-> next dev
+> nova-ai@1.0.0 start
+> next start
 
- ⚠ Port 3000 is in use, trying 3001 instead.
- ⚠ Port 3001 is in use, trying 3002 instead.
- ⚠ Port 3002 is in use, trying 3003 instead.
- ⚠ Port 3003 is in use, trying 3004 instead.
- ⚠ Port 3004 is in use, trying 3005 instead.
- ⚠ Port 3005 is in use, trying 3006 instead.
- ⚠ Port 3006 is in use, trying 3007 instead.
-   ▲ Next.js 15.1.3
-   - Local:        http://localhost:3007
-   - Network:      http://192.168.0.2:3007
-
- ✓ Starting...
- ✓ Ready in 1966ms
+ ⨯ Failed to start server
+Error: listen EADDRINUSE: address already in use :::3000
+    at <unknown> (Error: listen EADDRINUSE: address already in use :::3000)
+    at new Promise (<anonymous>) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}

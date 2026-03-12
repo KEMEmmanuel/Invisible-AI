@@ -12,13 +12,14 @@ function createWindow() {
   const { width, height } = primaryDisplay.workAreaSize;
 
   mainWindow = new BrowserWindow({
-    width: 450,
-    height: 700,
-    x: width - 480,
-    y: height - 730,
+    width: 80,
+    height: 80,
+    x: width - 100,
+    y: height - 100,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
+    resizable: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -73,6 +74,14 @@ app.on('ready', () => {
       }
     }
   });
+
+  // Cluely Style Command Bar shortcut
+  globalShortcut.register('Alt+Space', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.webContents.send('focus-command');
+    }
+  });
 });
 
 app.on('will-quit', () => {
@@ -108,10 +117,15 @@ ipcMain.on('close-window', () => {
 
 ipcMain.on('resize-window', (event, { width, height, x, y }) => {
   if (mainWindow) {
-    if (x !== undefined && y !== undefined) {
-      mainWindow.setBounds({ width, height, x, y }, true);
-    } else {
-      mainWindow.setSize(width, height, true);
-    }
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+    // Default positioning to bottom right if not specified
+    const targetX = x !== undefined ? x : screenWidth - width - 20;
+    const targetY = y !== undefined ? y : screenHeight - height - 20;
+
+    mainWindow.setResizable(true);
+    mainWindow.setBounds({ width, height, x: targetX, y: targetY }, true);
+    if (width <= 100) mainWindow.setResizable(false);
   }
 });
